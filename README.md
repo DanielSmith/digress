@@ -53,7 +53,7 @@ Claude reads the instructions from `~/.claude/CLAUDE.md` and knows to run the fo
 {
   "permissions": {
     "allow": [
-      "Bash(osascript*iTerm2*)"
+      "Bash(digress*)"
     ]
   }
 }
@@ -182,7 +182,11 @@ Provides:
 
 ## Manual Setup (Without Installer)
 
-If you prefer manual setup, add this to `~/.claude/CLAUDE.md`:
+If you prefer manual setup:
+
+1. Copy `digress` to your PATH (e.g., `/usr/local/bin/digress`)
+2. Make it executable: `chmod +x /usr/local/bin/digress`
+3. Add this to `~/.claude/CLAUDE.md`:
 
 ```markdown
 ## DIGRESS COMMAND
@@ -192,15 +196,7 @@ they want to fork the current Claude session into a new terminal window.
 
 Run this bash command:
 
-osascript <<EOF
-tell application "iTerm2"
-    create window with default profile
-    tell current session of current window
-        set name to "🐟 LABEL"
-        write text "cd 'DIRECTORY' && claude --continue --fork-session"
-    end tell
-end tell
-EOF
+digress LABEL --dir DIRECTORY
 
 Replace LABEL with requested name and DIRECTORY with current working directory.
 ```

@@ -62,15 +62,7 @@ When the user says "digress", "digress to X", "fork", "fork to X", or "branch of
 **To execute a digress/fork request, run this bash command:**
 
 ```bash
-osascript <<EOF
-tell application "iTerm2"
-    create window with default profile
-    tell current session of current window
-        set name to "🐟 LABEL"
-        write text "cd 'DIRECTORY' && claude --continue --fork-session"
-    end tell
-end tell
-EOF
+digress LABEL --dir DIRECTORY
 ```
 
 Replace:
