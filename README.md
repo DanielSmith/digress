@@ -47,6 +47,18 @@ Just say naturally:
 
 Claude reads the instructions from `~/.claude/CLAUDE.md` and knows to run the fork command.
 
+**Optional: Auto-approve fork commands.** To skip permission prompts when forking, add to `~/.claude/settings.json`:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(osascript*iTerm2*)"
+    ]
+  }
+}
+```
+
 ### From Terminal
 
 ```bash
