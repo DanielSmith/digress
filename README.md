@@ -47,6 +47,10 @@ Just say naturally:
 
 Claude reads the instructions from `~/.claude/CLAUDE.md` and knows to run the fork command.
 
+**Resuming** needs to be run from your terminal: `digress --resume experiment`
+
+(Resuming spawns a new interactive Claude session, which can't run from inside an existing one.)
+
 **Optional: Auto-approve fork commands.** To skip permission prompts when forking, add to `~/.claude/settings.json`:
 
 ```json
@@ -73,8 +77,9 @@ digress --help               # Show help
 ### Returning to Parent
 
 ```bash
+digress --resume experiment  # Resume by label
 claude --resume              # Interactive session picker
-claude --resume "main-idea"  # Resume by name
+claude --resume "main-idea"  # Resume by session name
 ```
 
 ### Naming Sessions
