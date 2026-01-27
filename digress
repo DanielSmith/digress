@@ -1,0 +1,156 @@
+#!/bin/bash
+#
+# DIGRESS - Fork Claude Code sessions into a tree of thought
+#
+# Usage:
+#   digress [label]              Fork current directory's session
+#   digress [label] --dir PATH   Fork session from specific directory
+#   digress --tree               Show the session tree
+#   digress --help               Show help
+#
+
+set -e
+
+# Config
+DIGRESS_DIR="${HOME}/.digress"
+TREE_FILE="${DIGRESS_DIR}/tree.json"
+LAST_DIR_FILE="${DIGRESS_DIR}/.last_directory"
+
+mkdir -p "$DIGRESS_DIR"
+
+# Initialize tree file if needed
+if [[ ! -f "$TREE_FILE" ]]; then
+    echo '{"sessions":{}}' > "$TREE_FILE"
+fi
+
+# Colors
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+show_help() {
+    cat << 'EOF'
+DIGRESS - Fork Claude Code sessions into a tree of thought
+
+Usage:
+  digress [label]              Fork current directory's Claude session
+  digress [label] --dir PATH   Fork session from specific directory
+  digress --tree               Show the session tree
+  digress --list               List known project directories
+  digress --resume [name]      Resume a session (opens claude picker)
+  digress --help               Show this help
+
+Examples:
+  digress                      Fork with default label "tangent"
+  digress shopping             Fork with label "shopping"
+  digress auth --dir ~/myproj  Fork session from ~/myproj
+
+The forked session opens in a new iTerm window with full context
+from the parent. The parent session remains unchanged.
+
+To return to a session:
+  claude --resume              Interactive session picker
+  claude --resume "name"       Resume specific session
+EOF
+}
+
+show_tree() {
+    echo -e "${CYAN}🌳 Digress Session Tree${NC}"
+    echo ""
+    if command -v jq &> /dev/null; then
+        local count
+        count=$(jq '.sessions | length' "$TREE_FILE" 2>/dev/null || echo "0")
+        if [[ "$count" == "0" ]]; then
+            echo "  (no sessions tracked yet)"
+        else
+            jq -r '
+                .sessions | to_entries[] |
+                "  " + .key +
+                if .value.dir then " [" + .value.dir + "]" else "" end +
+                if .value.parent then " (parent: " + .value.parent + ")" else " (root)" end
+            ' "$TREE_FILE" 2>/dev/null
+        fi
+    else
+        echo "  (install jq for tree visualization: brew install jq)"
+    fi
+    echo ""
+}
+
+show_list() {
+    echo -e "${CYAN}📁 Known Project Directories${NC}"
+    echo ""
+    if command -v jq &> /dev/null; then
+        jq -r '.sessions | to_entries[] | .value.dir // empty' "$TREE_FILE" 2>/dev/null | sort -u | while read -r dir; do
+            [[ -n "$dir" ]] && echo "  $dir"
+        done
+    fi
+    [[ -f "$LAST_DIR_FILE" ]] && echo -e "\nLast active: ${YELLOW}$(cat "$LAST_DIR_FILE")${NC}"
+    echo ""
+}
+
+record_fork() {
+    local parent="$1" child="$2" dir="$3"
+    command -v jq &> /dev/null || return
+    jq --arg child "$child" --arg parent "$parent" --arg dir "$dir" '
+        .sessions[$child] = {
+            "parent": (if $parent == "" then null else $parent end),
+            "children": [],
+            "dir": $dir,
+            "created": (now | todate)
+        }
+    ' "$TREE_FILE" > "${TREE_FILE}.tmp" && mv "${TREE_FILE}.tmp" "$TREE_FILE"
+}
+
+fork_session() {
+    local label="${1:-tangent}"
+    local target_dir="${2:-$(pwd)}"
+
+    # Expand to absolute path
+    target_dir="$(cd "$target_dir" 2>/dev/null && pwd)" || {
+        echo -e "${RED}Error: Directory not found: $target_dir${NC}"
+        exit 1
+    }
+
+    echo -e "${GREEN}🌊 Forking Claude session...${NC}"
+    echo -e "   Directory: ${YELLOW}${target_dir}${NC}"
+    echo -e "   Label:     ${YELLOW}${label}${NC}"
+    echo ""
+
+    record_fork "" "$label" "$target_dir"
+    echo "$target_dir" > "$LAST_DIR_FILE"
+
+    local escaped_dir="${target_dir//\'/\'\\\'\'}"
+
+    osascript <<EOF
+tell application "iTerm2"
+    create window with default profile
+    tell current session of current window
+        set name to "🐟 ${label}"
+        write text "cd '${escaped_dir}' && claude --continue --fork-session"
+    end tell
+end tell
+EOF
+
+    echo -e "${GREEN}✓ New window opened!${NC}"
+}
+
+# Argument parsing
+label=""
+target_dir=""
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --tree|-t) show_tree; exit 0 ;;
+        --list|-l) show_list; exit 0 ;;
+        --resume|-r) shift; exec claude --resume "$@" ;;
+        --back|-b) shift; exec claude --resume "$@" ;;
+        --help|-h) show_help; exit 0 ;;
+        --dir|-d) shift; target_dir="$1"; shift ;;
+        -*) echo -e "${RED}Unknown option: $1${NC}"; exit 1 ;;
+        *) label="$1"; shift ;;
+    esac
+done
+
+fork_session "$label" "$target_dir"
