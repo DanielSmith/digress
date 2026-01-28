@@ -20,7 +20,7 @@ main-idea (context unchanged)
 ## Installation
 
 ```bash
-git clone <this-repo> ~/projects/digress
+git clone https://github.com/DanielSmith/digress.git ~/projects/digress
 cd ~/projects/digress
 ./install.sh
 ```
